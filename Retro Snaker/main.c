@@ -1,16 +1,9 @@
-#include "Snake.h"
+#include "Env.h"
 
 LRESULT CALLBACK WndProc(HWND, UINT, WPARAM, LPARAM);
 LRESULT CALLBACK WndProc_Score(HWND, UINT, WPARAM, LPARAM);
 
-INT World[MAX_WORLD][MAX_WORLD];
-//蛇,食物
-POINT Food;
-//分数
 INT score;
-//尺寸
-INT cxClient, cyClient, cWorldLength, clpPixel;
-
 TCHAR szChildClassName[] = TEXT("SCORE_CHILD");
 
 
@@ -56,31 +49,24 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR szCmdLine,
 
 	return 0;
 }
-//利用数组记录蛇的位置，方便以后增加寻路算法
+
 LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 {
 	static HWND hwndChild;
 	HDC hdc;
 	PAINTSTRUCT ps;
-	static BOOL Dead, IsPressed, Auto, FindPath;
 	static RECT rtWorld, rtScore;
 	POINT Copy;
-	INT i, x, y;
 	static POINT *Path;
 
 	switch (message)
 	{
 	case WM_CREATE:
-		SetTimer(hwnd, 1, 50, NULL);
+		SetTimer(hwnd, SnakeSpeed, 200, NULL);
 
 		Path = (POINT*)malloc(sizeof(POINT) * MAX_WORLD * MAX_WORLD);
 
-		Dead = FALSE;
-		IsPressed = FALSE;
-		Auto = TRUE;
-		FindPath = FALSE;
-
-		BodyLength = 5;
+		Snake_Reset();
 		score = 0;
 		hwndChild = CreateWindow(szChildClassName, NULL,
 			WS_CHILD | WS_VISIBLE,
@@ -88,192 +74,83 @@ LRESULT CALLBACK WndProc(HWND hwnd, UINT message, WPARAM wParam, LPARAM lParam)
 			hwnd, (HMENU)1,
 			(HINSTANCE)GetWindowLong(hwnd, GWL_HINSTANCE), NULL);
 
-		for (x = 0; x < MAX_WORLD; x++)
-			for (y = 0; y < MAX_WORLD; y++)
-				World[x][y] = 0;
 		return 0;
 
 	case WM_SIZE:
-		cxClient = LOWORD(lParam);
-		cyClient = HIWORD(lParam);
-
-		cWorldLength = min(cxClient, cyClient);
-		clpPixel = cWorldLength / MAX_WORLD;
-
-		MoveWindow(hwndChild, cWorldLength, 0, cxClient - cWorldLength, cyClient / 2, TRUE);
-
-		//设置矩形
-		SetRect(&rtWorld, 1, 1, cWorldLength - 1, cWorldLength - 1);
-		SetRect(&rtScore, cWorldLength, 0, cxClient, cyClient / 2);
-
-		//初始化蛇身
-		Body[0].x = MAX_WORLD / 2;
-		Body[0].y = MAX_WORLD / 2;
-		World[MAX_WORLD / 2][MAX_WORLD / 2] = 1;
-		for (i = 1; i < BodyLength; i++)
-		{
-			Body[i].x = Body[i - 1].x - 1;
-			Body[i].y = Body[i - 1].y;
-
-			World[Body[i].y][Body[i].x] = 1;
-		}
-
+		rtWorld = Map_SetMapSize(lParam);
+		rtScore = ENV_SetScoreWindow(hwndChild);
 		//初始化食物
-		World[Food.x = rand() % MAX_WORLD][Food.y = rand() % MAX_WORLD] = 2;
-		while (IsKnocked(Body, BodyLength, Food)) {
-			World[Food.x][Food.y] = 0;
-			World[Food.x = rand() % MAX_WORLD][Food.y = rand() % MAX_WORLD] = 2;
-		}
+		ENV_ResetFood(FOODTYPE_NORMAL);
 		//绘制开始界面
 		hdc = GetDC(hwnd);
-		//边界
-		SelectObject(hdc, CreatePen(PS_DASH, 0, 0));
-
-		MoveToEx(hdc, cWorldLength, cyClient / 2, NULL);
-		LineTo(hdc, cxClient, cyClient / 2);
-
-		DeleteObject(SelectObject(hdc, GetStockObject(BLACK_PEN)));
-		Rectangle(hdc, 0, 0, cWorldLength, cWorldLength);
-
-		//食物
-		DrawPixel_Ellipse(hdc, Food);
-
-		
+		ENV_DrawMap(hdc);
+		ENV_DrawFood(hdc, FOODTYPE_NORMAL);
+		ENV_DrawBody(hdc);
 		ReleaseDC(hwnd, hdc);
 
 		return 0;
 
 	case WM_TIMER:
-		if (!Dead)
+		if (!Snake_JudgeDead())
 		{
 			InvalidateRect(hwnd, &rtWorld, TRUE);
 			InvalidateRect(hwndChild, NULL, TRUE);
-			IsPressed = FALSE;
 
-			if (Auto)
+			if (Snake_JudgeAuto())
 			{
-				Copy.x = Body[0].x;
-				Copy.y = Body[0].y;
-				if (!FindPath)
-					Snake_FindPath(Path);
-				MoveBodyFollowPath(Path, &FindPath);
-				UpdateBody(Copy);
+				Copy = Snake_GetHead();
+				if (!Snake_JudgeFindPath())
+				{
+					Snake_FindPath(Path, Food_GetPos(FOODTYPE_NORMAL), ENV_IsKnocked);
+					Snake_SetFindPath(TRUE);
+				}
+				Snake_MoveFallowPath(Path);
+				Snake_UpdateBody(Copy);
 			}
 		}
-		
 		return 0;
 
 	case WM_KEYDOWN:
-		if (IsPressed || Auto)
-			return 0;
-		
-		Copy.x = Body[0].x;
-		Copy.y = Body[0].y;
-
-		switch (wParam)
-		{
-		case VK_DOWN:
-		case VK_UP:
-			if (Body[0].x != Body[1].x)
-			{
-				Body[0].y += wParam == VK_UP ? -1 : 1;
-				IsPressed = TRUE;
-			}
-			break;
-
-		case VK_LEFT:
-		case VK_RIGHT:
-			if (Body[0].y != Body[1].y)
-			{
-				Body[0].x += wParam == VK_LEFT ? -1 : 1;
-				IsPressed = TRUE;
-			}
-			break;
-
-		default:
-			return 0;
-		}
-		if(IsPressed)
-		{
-			UpdateBody(Copy);
-			SendMessage(hwnd, WM_PAINT, 0, 0);
-		}
+		Snake_TurnAround(wParam);		
 		return 0;
 
 	case WM_CHAR:
 		if (wParam == 'a')
-			Auto = TRUE;
+		{
+			Snake_SetAuto(TRUE);
+		}
 		return 0;
 
-	case WM_PAINT://唯一的功能是，画一条蛇的身子
-		if (!Dead)
+	case WM_PAINT:
+		if (!Snake_JudgeDead())
 		{
 			hdc = BeginPaint(hwnd, &ps);
-
-			DrawPixel_Ellipse(hdc, Food);
-			if(!IsPressed && !Auto)
-				MoveBody();
-			DrawBody(hdc);
+			ENV_DrawFood(hdc, FOODTYPE_NORMAL);
+			if (!Snake_JudgeAuto() && !Snake_JudgeIsPressed())
+				Snake_MoveForward();
+			ENV_DrawBody(hdc);
 			EndPaint(hwnd, &ps);
-			if (IsEaten())
+
+			Snake_SetIsPressed(FALSE);
+			if (ENV_IsEaten())
 			{
 				score++;
-				BodyLength++;
-				srand((unsigned)time(NULL));
-				World[Food.x = rand() % MAX_WORLD][Food.y = rand() % MAX_WORLD] = 2;
-				while (IsKnocked(Body, BodyLength, Food) || IsEaten()) {
-					World[Food.x][Food.y] = 0;
-					World[Food.x = rand() % MAX_WORLD][Food.y = rand() % MAX_WORLD] = 2;
-				}
+				Snake_Grow();
+				ENV_ResetFood(FOODTYPE_NORMAL);
 				InvalidateRect(hwndChild, &rtScore, TRUE);
-				FindPath = FALSE;
-				if (score == MAX_WORLD * MAX_WORLD - 7)
-				{
-					KillTimer(hwnd, 1);
-					free(Path);
-					switch (MessageBox(hwnd, TEXT("Mission Complete"), TEXT("HaHaHa"),
-						MB_RETRYCANCEL))
-					{
-					case IDRETRY:
-						ReSetBody();
-						SendMessage(hwnd, WM_CREATE, 0, 0);
-						SendMessage(hwnd, WM_SIZE, 0, MAKELPARAM(cxClient, cyClient));
-						SendMessage(hwnd, WM_PAINT, 0, 0);
-						return 0;
-
-					case IDCANCEL:
-						SendMessage(hwnd, WM_DESTROY, 0, 0);
-						return 0;
-					}
-				}
+				Snake_SetFindPath(FALSE);
 			}
-			if (IsKnocked(Body, BodyLength, Body[0]))
+			if ((score == MAX_WORLD * MAX_WORLD - 7) || (ENV_IsKnocked(Snake_GetBody(), Snake_GetBodyLength(), Snake_GetHead())))
 			{
-				KillTimer(hwnd, 1);
-				free(Path);
-				Dead = TRUE;
-				switch (MessageBox(hwnd, TEXT("YOU DEAD"), TEXT("HaHaHa~~"),
-					MB_RETRYCANCEL))
-				{
-				case IDRETRY:
-					ReSetBody();
-					SendMessage(hwnd, WM_CREATE, 0, 0);
-					SendMessage(hwnd, WM_SIZE, 0, MAKELPARAM(cxClient, cyClient));
-					SendMessage(hwnd, WM_PAINT, 0, 0);
-					return 0;
-
-				case IDCANCEL:
-					SendMessage(hwnd, WM_DESTROY, 0, 0);
-					return 0;
-				}
+				Snake_SetDead(TRUE);
+				ENV_GameOver(hwnd, Path);
+				return 0;
 			}
 		}
 
 		return 0;
 
 	case WM_DESTROY:
-		//KillTimer(hwnd, 1);
-		//free(Path);
 		PostQuitMessage(0);
 		return 0;
 	}
@@ -296,7 +173,7 @@ LRESULT CALLBACK WndProc_Score(HWND hwnd, UINT message, WPARAM wParam, LPARAM lP
 		GetClientRect(hwnd, &rect_num);
 		rect_text.left = rect_text.top = 0;
 		rect_text.right = rect_num.right;
-		rect_text.bottom = rect_num.bottom - 4 * clpPixel;
+		rect_text.bottom = rect_num.bottom - 4 * Map_GetPixel();
 
 		hdc = BeginPaint(hwnd, &ps);
 		//计分板

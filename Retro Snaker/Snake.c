@@ -1,81 +1,132 @@
 #include "Snake.h"
+struct Snake Snake;
 
-extern POINT Body[MAX_WORLD * MAX_WORLD] = { 0, 0 };
-extern INT BodyLength  = 5;
-
-VOID DrawBody(HDC hdc)
+VOID Snake_UpdateBody(POINT ptCopy_1)
 {
-	int i;
-	//HBRUSH hbrush;
+	INT i;
+	POINT ptCopy_2;
 
-	for (i = 0; i < BodyLength; i++)
+	for(i = 1; i < Snake.iBodyLength ; i++)
 	{
-		/*if (i == 0)
-		{
-			hbrush = SelectObject(hdc, CreateSolidBrush(RGB(255, 0, 0)));
-			DrawPixel_Rect(hdc, Body[i]);
-			SelectObject(hdc, hbrush);
-		}
-		else if (i == BodyLength - 1)
-		{
-			hbrush = SelectObject(hdc, CreateSolidBrush(RGB(0, 255, 0)));*/
-			DrawPixel_Rect(hdc, Body[i]);
-			/*SelectObject(hdc, hbrush);
-		}
-		else
-		{
-			hbrush = SelectObject(hdc, CreateSolidBrush(RGB(0, 0, 255)));
-			DrawPixel_Rect(hdc, Body[i]);
-			SelectObject(hdc, hbrush);
-		}*/
+		ptCopy_2 = Snake.ptBody[i];
+		Snake.ptBody[i] = ptCopy_1;
+		ptCopy_1 = ptCopy_2;
 	}
-	//DeleteObject(hbrush);
 }
 
-VOID MoveBody(VOID)
+
+VOID Snake_Grow()
 {
-	POINT copy;
+	Snake.iBodyLength++;
+}
 
-	copy.x = Body[0].x;
-	copy.y = Body[0].y;
+VOID Snake_MoveForward()
+{
+	POINT ptCopy;
 
-	if (Body[0].x != Body[1].x)
-		Body[0].x += Body[0].x > Body[1].x ? 1 : -1;
+	ptCopy = Snake.ptBody[0];
+
+	if (Snake.ptBody[0].x != Snake.ptBody[1].x)
+		Snake.ptBody[0].x += Snake.ptBody[0].x > Snake.ptBody[1].x ? 1 : -1;
 	else
-		Body[0].y += Body[0].y > Body[1].y ? 1 : -1;
+		Snake.ptBody[0].y += Snake.ptBody[0].y > Snake.ptBody[1].y ? 1 : -1;
 
-	UpdateBody(copy);
+	Snake_UpdateBody(ptCopy);
 }
 
-VOID Snake_FindPath(POINT * Path)
+VOID Snake_TurnAround(WPARAM wParam)
 {
+	POINT ptCopy;
+	if (Snake_JudgeAuto() || Snake_JudgeIsPressed())
+			return ;
+		
+		ptCopy = Snake.ptBody[0];
+
+		switch (wParam)
+		{
+		case VK_DOWN:
+		case VK_UP:
+			if (Snake.ptBody[0].x != Snake.ptBody[1].x)
+			{
+				Snake.ptBody[0].y += wParam == VK_UP ? -1 : 1;
+				Snake.bIsPressed = TRUE;
+			}
+			break;
+
+		case VK_LEFT:
+		case VK_RIGHT:
+			if (Snake.ptBody[0].y != Snake.ptBody[1].y)
+			{
+				Snake.ptBody[0].x += wParam == VK_LEFT ? -1 : 1;
+				Snake.bIsPressed = TRUE;
+			}
+			break;
+
+		default:
+			return ;
+		}
+		if(Snake.bIsPressed)
+			Snake_UpdateBody(ptCopy);
+}
+
+VOID Snake_Reset()
+{
+	INT i;
+
+	Snake.iSpeed = 50;
+	Snake.iBodyLength = 5;
+	Snake.bDead = 0;	
+	Snake.bIsPressed = 0;
+	Snake.bAuto = 0;
+	Snake.bFindPath = 0;
+
+	Snake.ptBody[0].x = MAX_WORLD / 2;
+	Snake.ptBody[0].y = MAX_WORLD / 2;
+	for (i = 1; i < Snake.iBodyLength; i++)
+	{
+		Snake.ptBody[i].x = Snake.ptBody[i - 1].x - 1;
+		Snake.ptBody[i].y = Snake.ptBody[i - 1].y;
+	}
+}
+
+VOID Snake_ChangeSpeed(HWND hwnd, INT iSpeed)
+{
+	KillTimer(hwnd, SnakeSpeed);
+	SetTimer(hwnd, SnakeSpeed, iSpeed, NULL);
+	Snake.iSpeed = iSpeed;
+}
+
+VOID Snake_FindPath(POINT * lpptPath, POINT ptFood, BOOL IsKnocked(POINT* Body, INT BodyLength, POINT pt))
+{
+	//用虚拟蛇身走一遍寻找到的路径
+	//如果虚拟蛇头能找到虚拟蛇尾，则控制真实蛇身移动
+	//如果找不到，向着远离食物的地方移动一格
 	POINT * _temp = (POINT*)malloc(sizeof(POINT) * MAX_WORLD * MAX_WORLD);
 	POINT * LogicBody = (POINT*)malloc(sizeof(POINT) * MAX_WORLD * MAX_WORLD);
-	POINT LogicTail = {-1, -1}, ptTemp;
 	INT i, j = 0;
-	BOOL test;
 	INT LogicBodyLength = 0;
 
-	FindPath(Body[0], Food, IsKnocked, Body, BodyLength, Path);
-	if (Path->x != -1)
+	FindPath(Snake.ptBody[0], ptFood, IsKnocked, Snake.ptBody, Snake.iBodyLength, lpptPath);
+	if (lpptPath->x != -1)
 	{
-		if (BodyLength + 1 <= Path->x)//����������������
+		if (Snake.iBodyLength + 1 <= lpptPath->x)//用来更新虚拟蛇身
 		{
-			for (i = 0; i < BodyLength + 1; i++)
+			for (i = 0; i < Snake.iBodyLength + 1; i++)
 			{
-				LogicBody[i] = Path[i + 1];
+				LogicBody[i] = lpptPath[i + 1];
 				LogicBodyLength++;
 			}
 		}
-		else {
-			for (i = 0; i < Path[0].x; i++)
+		else 
+		{
+			for (i = 0; i < lpptPath[0].x; i++)
 			{
-				LogicBody[i] = Path[i + 1];
+				LogicBody[i] = lpptPath[i + 1];
 				LogicBodyLength++;
 			}
-			for (i = 0; i < BodyLength - Path[0].x + 1; i++)
+			for (i = 0; i < Snake.iBodyLength - lpptPath[0].x + 1; i++)
 			{
-				LogicBody[i + Path[0].x] = Body[i];
+				LogicBody[i + lpptPath[0].x] = Snake.ptBody[i];
 				LogicBodyLength++;
 			}
 		}
@@ -87,90 +138,75 @@ VOID Snake_FindPath(POINT * Path)
 			return;
 		}		
 	}
-	FindFarPoint(Body[0], Food, Path, IsKnocked, Body, BodyLength);
+	FindFarPoint(Snake.ptBody[0], ptFood, lpptPath, IsKnocked, Snake.ptBody, Snake.iBodyLength);
 	free(LogicBody);
 	free(_temp);
 }
 
-BOOL IsEaten(VOID)
-{
-	BOOL flag = FALSE;
-
-	if ((Body[0].x == Food.x && Body[0].y == Food.y))
-		flag = TRUE;
-
-	return flag;
-}
-
-BOOL IsKnocked(POINT* Body, INT BodyLength, POINT pt)
-{
-	BOOL flag = FALSE;
-	int i;
-	//�ж�ײǽ
-	if (pt.x >= MAX_WORLD || pt.x < 0 || pt.y >= MAX_WORLD || pt.y < 0)
-		flag = TRUE;
-	//�ж�ײ�Լ�
-	for (i = 1; i < BodyLength; i++)
-		if (pt.x == Body[i].x && pt.y == Body[i].y)
-		{
-			flag = TRUE;
-			break;
-		}
-
-	return flag;
-}
-
-VOID DrawPixel_Rect(HDC hdc, POINT pt)
-{
-	Rectangle(hdc, pt.x * clpPixel, pt.y * clpPixel, (pt.x + 1) * clpPixel, (pt.y + 1) * clpPixel);
-}
-
-VOID DrawPixel_Ellipse(HDC hdc, POINT pt)
-{
-	Ellipse(hdc, pt.x * clpPixel, pt.y * clpPixel, (pt.x + 1) * clpPixel, (pt.y + 1) * clpPixel);
-}
-
-VOID UpdateBody(POINT copy)
-{
-	int i;
-	POINT tocopy;
-
-	World[Body[0].y][Body[0].x] = 1;
-	World[Body[BodyLength - 1].y][Body[BodyLength - 1].x] = 0;
-	for (i = 1; i < BodyLength; i++)
-	{
-		tocopy.x = Body[i].x;
-		tocopy.y = Body[i].y;
-
-		Body[i].x = copy.x;
-		Body[i].y = copy.y;
-
-		copy.x = tocopy.x;
-		copy.y = tocopy.y;
-	}
-	World[Body[1].y][Body[1].x] = 1;
-	World[Body[BodyLength - 1].y][Body[BodyLength - 1].x] = 1;
-}
-
-VOID MoveBodyFollowPath(POINT * Path, BOOL* FindPath)
+VOID Snake_MoveFallowPath(POINT * lpptPath)
 {
 	static INT i;
 	if (i == 0)
 	{
-		i = Path->x;
-		*FindPath = TRUE;
+		i = lpptPath->x;
+		Snake_SetFindPath(TRUE);
 	}
-	Body[0] = Path[i--];
+	Snake.ptBody[0] = lpptPath[i--];
 	if (i == 0)
-		*FindPath = FALSE;
+		Snake_SetFindPath(FALSE);
 }
 
-VOID ReSetBody()
+VOID Snake_SetDead(BOOL bMood)
 {
-	INT i;
-	for (i = 0; i < BodyLength; i++)
-	{
-		Body[i].x = 0;
-		Body[i].y = 0;
-	}
+	Snake.bDead = bMood;
+}
+
+VOID Snake_SetIsPressed(BOOL bMood)
+{
+	Snake.bIsPressed = bMood;
+}
+
+VOID Snake_SetAuto(BOOL bMood)
+{
+	Snake.bAuto = bMood;
+}
+
+VOID Snake_SetFindPath(BOOL bMood)
+{
+	Snake.bFindPath = bMood;
+}
+
+BOOL Snake_JudgeDead()
+{
+	return Snake.bDead;
+}
+
+BOOL Snake_JudgeIsPressed()
+{
+	return Snake.bIsPressed;
+}
+
+BOOL Snake_JudgeAuto()
+{
+	return Snake.bAuto;
+}
+
+BOOL Snake_JudgeFindPath()
+{
+	return Snake.bFindPath;
+}
+
+POINT* Snake_GetBody()
+{
+	return Snake.ptBody;
+}
+
+POINT Snake_GetHead()
+{
+	return Snake.ptBody[0];
+}
+
+INT Snake_GetBodyLength()
+{
+	return Snake.iBodyLength;
 }

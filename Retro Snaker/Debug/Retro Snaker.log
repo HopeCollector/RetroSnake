@@ -1,3 +1,2 @@
 ﻿  main.c
-f:\我的c程序\retro snaker\main.c(222): warning C4013: “time”未定义；假设外部返回 int
-  Retro Snaker.vcxproj -> F:\我的c程序\Retro Snaker\Debug\Retro Snaker.exe
+  Retro Snaker.vcxproj -> F:\我的c程序\gitSnake\RetroSnake\Retro Snaker\Debug\Retro Snaker.exe

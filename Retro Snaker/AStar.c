@@ -1,6 +1,6 @@
 #include "AStar.h"
 
-extern INT NEIGHBORE[4][2] = {
+const INT NEIGHBORE[4][2] = {
 	0, 1,
 	0, -1,
 	1, 0,
@@ -113,7 +113,7 @@ VOID FindPath(POINT ptStart, POINT ptGoal, BOOL Unavalible(POINT* Body, INT Body
 }
 
 VOID FindFarPoint(POINT ptCenter, POINT ptGoal, POINT* ptReturn, BOOL Unavalible(POINT* Body, INT BodyLength, POINT pt), POINT* Body, INT BodyLength)
-{//还有一点小问题
+{
 	INT i, j;
 	INT iMax_Index = 0;
 	INT LogicBodyLength;
@@ -122,7 +122,6 @@ VOID FindFarPoint(POINT ptCenter, POINT ptGoal, POINT* ptReturn, BOOL Unavalible
 	FLOAT fDistance[4];
 	POINT ptNext;
 	POINT Path[MAX_WORLD * MAX_WORLD];
-	POINT LogicTail;
 	POINT LogicBody[MAX_WORLD * MAX_WORLD];
 
 	for (i = 0; i < 4; i++)
@@ -159,22 +158,6 @@ VOID FindFarPoint(POINT ptCenter, POINT ptGoal, POINT* ptReturn, BOOL Unavalible
 		FindPath(ptNext, Body[LogicBodyLength], Unavalible, LogicBody, LogicBodyLength + 1, Path);
 		if (Path->x != -1)
 			flag[i] = TRUE;
-		/*for (j = 0; j < 4; j++)//判断能否找到尾巴
-		{
-			LogicTail.x = Body[BodyLength - 2].x + NEIGHBORE[j][0];
-			LogicTail.y = Body[BodyLength - 2].y + NEIGHBORE[j][1];
-			if (!Unavalible(Body, BodyLength - 1, LogicTail))
-			{
-				FindPath(ptNext, LogicTail, Unavalible, Body, BodyLength, Path[j]);
-				if (Path[j]->x != -1)
-				{
-					flag[i] = TRUE;
-				}
-			}
-		}*/
-		//FindPath(ptNext, Body[BodyLength - 2], Unavalible, Body, BodyLength, Path[i]);
-		//if (Path[i]->x != -1) //判断能否找到尾巴
-			//flag = TRUE;		
 	}
 	if (flag[0] ||
 		flag[1] ||

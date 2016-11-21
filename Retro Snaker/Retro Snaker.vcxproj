@@ -144,14 +144,20 @@
   <ItemGroup>
     <ClCompile Include="AStar.c" />
     <ClCompile Include="CELL.c" />
+    <ClCompile Include="Env.c" />
+    <ClCompile Include="Food.c" />
     <ClCompile Include="Heap.c" />
     <ClCompile Include="main.c" />
+    <ClCompile Include="Map.c" />
     <ClCompile Include="Snake.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="AStar.h" />
     <ClInclude Include="Cell.h" />
+    <ClInclude Include="Env.h" />
+    <ClInclude Include="Food.h" />
     <ClInclude Include="Heap.h" />
+    <ClInclude Include="Map.h" />
     <ClInclude Include="Snake.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

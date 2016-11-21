@@ -1,23 +1,40 @@
-#pragma once
+#ifndef _SNAKE_H_
+#define _SNAKE_H_
+//私有
 #include "AStar.h"
+#define SnakeSpeed 1
 
-#ifndef _SNAKE_
-#define _SNAKE_
+struct Snake{
+	POINT ptBody[MAX_WORLD * MAX_WORLD];
+	INT iSpeed;
+	INT iBodyLength;
+	BOOL bDead;
+	BOOL bAuto;
+	BOOL bIsPressed;
+	BOOL bFindPath;
+};
 
-extern POINT Body[MAX_WORLD * MAX_WORLD];
-extern INT BodyLength;
-extern INT cxClient, cyClient, cWorldLength, clpPixel;
-extern POINT Food;
-extern INT World[MAX_WORLD][MAX_WORLD];
-#endif // !_SNAKE_
+VOID Snake_UpdateBody(POINT ptCopy);
 
-VOID Snake_FindPath(POINT* ptReturn);
-BOOL IsKnocked(POINT* Body, INT BodyLength, POINT pt);
-BOOL IsEaten(VOID);
-VOID DrawBody(HDC hdc);
-VOID MoveBody(VOID);
-VOID DrawPixel_Rect(HDC hdc, POINT pt);
-VOID DrawPixel_Ellipse(HDC hdc, POINT pt);
-VOID UpdateBody(POINT copy);
-VOID MoveBodyFollowPath(POINT * Path, BOOL* FindPath);
-VOID ReSetBody();
+//公有
+VOID Snake_Grow();
+VOID Snake_MoveForward();
+VOID Snake_TurnAround(WPARAM wParam);
+VOID Snake_Reset();
+VOID Snake_ChangeSpeed(HWND hwnd, INT iSpeed);
+VOID Snake_FindPath(POINT * lpptPath, POINT ptFood, BOOL IsKnocked(POINT* Body, INT BodyLength, POINT pt));//判断碰撞的函数有问题
+VOID Snake_MoveFallowPath(POINT * lpptPath);
+
+VOID Snake_SetDead(BOOL bMood);
+VOID Snake_SetIsPressed(BOOL bMood);
+VOID Snake_SetAuto(BOOL bMood);
+VOID Snake_SetFindPath(BOOL bMood);
+
+BOOL Snake_JudgeDead();
+BOOL Snake_JudgeIsPressed();
+BOOL Snake_JudgeAuto();
+BOOL Snake_JudgeFindPath();
+POINT* Snake_GetBody();
+POINT Snake_GetHead();
+INT Snake_GetBodyLength();
+#endif

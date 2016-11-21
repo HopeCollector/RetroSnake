@@ -27,6 +27,15 @@
     <ClCompile Include="CELL.c">
       <Filter>源文件</Filter>
     </ClCompile>
+    <ClCompile Include="Env.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Food.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
+    <ClCompile Include="Map.c">
+      <Filter>源文件</Filter>
+    </ClCompile>
     <ClCompile Include="Snake.c">
       <Filter>源文件</Filter>
     </ClCompile>
@@ -39,6 +48,15 @@
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Heap.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Env.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Food.h">
+      <Filter>头文件</Filter>
+    </ClInclude>
+    <ClInclude Include="Map.h">
       <Filter>头文件</Filter>
     </ClInclude>
     <ClInclude Include="Snake.h">
